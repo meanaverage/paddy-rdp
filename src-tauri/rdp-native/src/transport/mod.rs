@@ -1529,7 +1529,13 @@ mod proxy_tests {
     #[tokio::test]
     async fn relays_over_a_process() {
         let (server, fingerprint) = fake_rdp_server().await;
-        relays_through(serde_json::json!({ "kind": "process", "program": "nc", "args": ["127.0.0.1", server.to_string()] }), &fingerprint).await;
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("stdio-tunnel.rs");
+        let program = dir.path().join(if cfg!(windows) { "stdio-tunnel.exe" } else { "stdio-tunnel" });
+        std::fs::write(&source, include_str!("../../tests/fixtures/stdio-tunnel.rs")).unwrap();
+        let built = std::process::Command::new("rustc").arg("--edition=2021").arg(&source).arg("-o").arg(&program).output().unwrap();
+        assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+        relays_through(serde_json::json!({ "kind": "process", "program": program, "args": [format!("127.0.0.1:{server}")] }), &fingerprint).await;
     }
 
     #[tokio::test]

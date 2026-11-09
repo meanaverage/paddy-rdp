@@ -374,12 +374,30 @@ fn remove(folder: &FolderSpec, remote: &str) -> Result<(), DriveError> {
 }
 
 #[cfg(unix)]
-fn same_file(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
+fn same_file(a: &std::fs::Metadata, b: &std::fs::Metadata, _: &Path, _: &Path) -> bool {
     use std::os::unix::fs::MetadataExt;
     a.dev() == b.dev() && a.ino() == b.ino()
 }
-#[cfg(not(unix))]
-fn same_file(_: &std::fs::Metadata, _: &std::fs::Metadata) -> bool { false }
+#[cfg(windows)]
+fn same_file(_: &std::fs::Metadata, _: &std::fs::Metadata, a: &Path, b: &Path) -> bool {
+    use std::os::windows::{fs::OpenOptionsExt, io::AsRawHandle};
+    use windows_sys::Win32::Storage::FileSystem::{GetFileInformationByHandleEx, FileIdInfo, FILE_ID_INFO,
+        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT};
+    // File IDs identify a case-only rename without following the last path component's reparse point.
+    // https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandleex
+    let identify = |path: &Path| -> Option<(u64, [u8; 16])> {
+        let file = OpenOptions::new().access_mode(0)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT).open(path).ok()?;
+        let mut info = std::mem::MaybeUninit::<FILE_ID_INFO>::uninit();
+        // SAFETY: the File keeps the handle alive; success initializes the complete information structure.
+        if unsafe { GetFileInformationByHandleEx(file.as_raw_handle(), FileIdInfo, info.as_mut_ptr().cast(), std::mem::size_of::<FILE_ID_INFO>() as u32) } == 0 { return None; }
+        let info = unsafe { info.assume_init() };
+        Some((info.VolumeSerialNumber, info.FileId.Identifier))
+    };
+    matches!((identify(a), identify(b)), (Some(a), Some(b)) if a == b)
+}
+#[cfg(not(any(unix, windows)))]
+fn same_file(_: &std::fs::Metadata, _: &std::fs::Metadata, _: &Path, _: &Path) -> bool { false }
 
 fn rename(folder: &FolderSpec, from: &str, to: &str, replace: bool) -> Result<(), DriveError> {
     let source = locate(folder, from, false)?;
@@ -392,7 +410,7 @@ fn rename(folder: &FolderSpec, from: &str, to: &str, replace: bool) -> Result<()
     // Something else in the way: only when asked to replace it. The same file under another spelling of its name (a
     // case-insensitive file system) is a plain rename.
     if let Ok(existing) = std::fs::symlink_metadata(&target.local) {
-        if !same_file(&existing, &moving) {
+        if !same_file(&existing, &moving, &target.local, &source.local) {
             if !replace {
                 return Err(DriveError::new("EEXIST", format!("{to} exists")));
             }

@@ -58,7 +58,8 @@ fn files_read_and_write_at_offsets() {
     assert_eq!(read(&file, 0, 100).unwrap(), b"hello");
     assert_eq!(read(&file, 1, 2).unwrap(), b"el");
     assert!(read(&file, 5, 10).unwrap().is_empty());
-    assert_eq!(code(write(&file, 0, b"x")), "EBADF"); // opened for reading
+    // A read-only handle refuses writes: Windows reports access denied, Unix a bad descriptor.
+    assert_eq!(code(write(&file, 0, b"x")), if cfg!(windows) { "EACCES" } else { "EBADF" });
     let file = open(&f, "\\new.txt", mode(true, true, true, false)).unwrap();
     assert_eq!(write(&file, 0, b"abcdef").unwrap(), 6);
     assert_eq!(write(&file, 2, b"XY").unwrap(), 2);

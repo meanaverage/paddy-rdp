@@ -28,3 +28,6 @@ uuid = { version = "1", features = ["v4"] }
 [dev-dependencies]
 rcgen = { version = "0.14.10", default-features = false, features = ["ring", "crypto"] }
 tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
