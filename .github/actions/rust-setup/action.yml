@@ -1,0 +1,19 @@
+name: Paddy Rust toolchain
+description: Restore pinned Rust tools in a disposable Linux runner
+inputs:
+  fuzz:
+    description: Include the pinned sanitizer toolchain and cargo-fuzz
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: |
+          ${{ runner.tool_cache }}/paddy/rustup
+          ${{ runner.tool_cache }}/paddy/cargo/bin
+        key: paddy-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.fuzz }}-${{ hashFiles('rust-toolchain.toml', '.github/actions/rust-setup/**') }}
+    - shell: bash
+      env:
+        PADDY_INSTALL_FUZZ: ${{ inputs.fuzz }}
+      run: bash "$GITHUB_ACTION_PATH/setup.sh"

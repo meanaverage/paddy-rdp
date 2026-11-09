@@ -1,0 +1,27 @@
+{
+  "extends": "../tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "compilerOptions": {
+    "baseUrl": "src",
+    "target": "ES2021",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "paths": {
+      "*": [
+        "../node_modules/*",
+        "../../app/node_modules/*",
+        "./app/node_modules/*"
+      ],
+      "tabby-*": [
+        "../../tabby-*/src"
+      ],
+      "tabby-tauri/remote/*": [
+        "../../tabby-tauri/src/remote/*"
+      ]
+    }
+  }
+}

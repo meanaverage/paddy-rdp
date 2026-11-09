@@ -1,0 +1,21 @@
+[package]
+name = "paddy-rdp-command-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+[package.metadata]
+cargo-fuzz = true
+[dependencies]
+libfuzzer-sys = "0.4"
+paddy-rdp-command-core = { path = ".." }
+[workspace]
+members = ["."]
+[profile.release]
+debug = 1
+overflow-checks = true
+[[bin]]
+name = "command_output"
+path = "fuzz_targets/command_output.rs"
+test = false
+doc = false
+bench = false

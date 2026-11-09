@@ -1,0 +1,22 @@
+[package]
+name = "paddy-rdp-desktop-core-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+[package.metadata]
+cargo-fuzz = true
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_json = "1"
+paddy-rdp-desktop-core = { path = ".." }
+[workspace]
+members = ["."]
+[profile.release]
+debug = 1
+overflow-checks = true
+[[bin]]
+name = "desktop"
+path = "fuzz_targets/desktop.rs"
+test = false
+doc = false
+bench = false

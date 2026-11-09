@@ -1,0 +1,7 @@
+[package]
+name = "paddy-page-core"
+version = "0.1.0-rdp.1"
+edition = "2021"
+publish = false
+[dependencies]
+serde_json = "1"

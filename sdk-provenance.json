@@ -1,0 +1,72 @@
+{
+  "source": "meanaverage/itabby",
+  "commit": "18fc7fa3ecd2256eb5c6413881a7beffec988103",
+  "description": "Versioned host ABI support snapshot. Changes are imported from the canonical Paddy SDK sources with parity checks.",
+  "files": [
+    {
+      "path": "src-tauri/js-value-core/.gitignore",
+      "sha256": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368"
+    },
+    {
+      "path": "src-tauri/js-value-core/Cargo.lock",
+      "sha256": "d7ccc1ed3b593686df2b2841284e8e72b74140cc5b61b0e064bb639863197e5c"
+    },
+    {
+      "path": "src-tauri/js-value-core/Cargo.toml",
+      "sha256": "6776cd6138c01af5825f8f2eb8066087e096306ffddba88d4d131237d48e5669"
+    },
+    {
+      "path": "src-tauri/js-value-core/README.md",
+      "sha256": "d6f5b9e8b724ba2a7a3d71f361669e041982aa57b20e5b9dd087f3f592801750"
+    },
+    {
+      "path": "src-tauri/js-value-core/src/data.rs",
+      "sha256": "6132a239dff4b4cdcc7c330e4853dabf931feede65f374b15231739a5043a89e"
+    },
+    {
+      "path": "src-tauri/js-value-core/src/json.rs",
+      "sha256": "6379e7da972c74209f7b440e55a155ba856fb872aba48c401c6934c133628bd4"
+    },
+    {
+      "path": "src-tauri/js-value-core/src/lib.rs",
+      "sha256": "7037a0199a4facfe4786e0886e83214661a20b1422f2462e838f083622794ee5"
+    },
+    {
+      "path": "src-tauri/js-value-core/src/text.rs",
+      "sha256": "153f12d0a20aaeb59bd92f961fe96274f5ce6c474d3bd3a01a788b0b4dc266a3"
+    },
+    {
+      "path": "src-tauri/page-core/Cargo.toml",
+      "sha256": "ff6019d3e99aa2323c46ff94bb473cdca67688d340e48dd729e4f565eaf8f6f5"
+    },
+    {
+      "path": "src-tauri/page-core/src/lib.rs",
+      "sha256": "bf047388e264f9863d3c8ec1ec521ea1425563ecb667faffc2c49ad7039b5131"
+    }
+  ],
+  "packaging": [
+    "page-core and js-value-core use version 0.1.0-rdp.1 to distinguish the exported SDK from the host workspace copies; source semantics are unchanged."
+  ],
+  "shipped": {
+    "src-tauri/page-core/Cargo.lock": "f3a5e752418f963fd10d6c91788915bbdb3a791040cfff4c917a10dc7de3f31f",
+    "src-tauri/page-core/Cargo.toml": "4fb8502c59b9bada8ddf6c77f071f9c1965e2dd2af08d6fd5817596087a8c4ab",
+    "src-tauri/page-core/src/lib.rs": "bf047388e264f9863d3c8ec1ec521ea1425563ecb667faffc2c49ad7039b5131",
+    "src-tauri/js-value-core/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "src-tauri/js-value-core/Cargo.lock": "a96d4f174f950959f56e2f92f9533e95ea7c8c94d9b3a0ce8b459b17a26382da",
+    "src-tauri/js-value-core/Cargo.toml": "b7b83c808c5f8d003c42748944c531daa412ce775bef9bfb3a1be4447dd0cac7",
+    "src-tauri/js-value-core/README.md": "d6f5b9e8b724ba2a7a3d71f361669e041982aa57b20e5b9dd087f3f592801750",
+    "src-tauri/js-value-core/src/data.rs": "6132a239dff4b4cdcc7c330e4853dabf931feede65f374b15231739a5043a89e",
+    "src-tauri/js-value-core/src/json.rs": "6379e7da972c74209f7b440e55a155ba856fb872aba48c401c6934c133628bd4",
+    "src-tauri/js-value-core/src/lib.rs": "7037a0199a4facfe4786e0886e83214661a20b1422f2462e838f083622794ee5",
+    "src-tauri/js-value-core/src/text.rs": "153f12d0a20aaeb59bd92f961fe96274f5ce6c474d3bd3a01a788b0b4dc266a3",
+    "itabby-plugin/src/rust/core.ts": "20419c81b5684d1826ec12ca359c2677a6cf13c02849a2dfdef1250577611b83",
+    "itabby-plugin/src/rust/value.ts": "bd27d5ebb0b436317bc5292334b051ac4757197d02b4fd2bc3c42a44a2ed28b2",
+    "sdk/host/command.ts": "ed527360868a5a9fab8e4017fd4c668b754653d0bd8cc52b9e005b8be8584419",
+    "sdk/host/osd.ts": "6c3b3a7a65e0557350cfa41bddbd1732f70b06a25ba35f81aad3a9d402499b4a",
+    "sdk/host/probe.ts": "060354f4c1ce54f8689e49ec93d1bbba03bd81b131619b5d90d3f11548fdcfa7",
+    "sdk/host/ssh.ts": "39a96149ca5bf973e4de4579b59e673c63ddc9fe3f1224174d40c00867117455",
+    "sdk/host/sshChannelStream.ts": "23765e32d894dd24fb82bab7a551f404e278cd324fe45d1c4f83610ba37fe015",
+    "sdk/host/targets.ts": "ff4ea3534fee620b7370c886ff7c283c2772d05d880991c80f1e462c08bf92cc",
+    "sdk/host/byteQueue.ts": "0db8ec5397c35c34cf496928ce41e04a137fcff96f90e1e9476286f3f9c23b0e"
+  }
+}

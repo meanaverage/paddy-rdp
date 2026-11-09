@@ -1,0 +1,30 @@
+[package]
+name = "paddy-rdp-native"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+[dependencies]
+paddy-rdp-file-core = { path = "../rdp-file-core" }
+tauri = { version = "2.12", features = [] }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
+tokio-rustls = { version = "0.26", default-features = false }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+ring = "0.17"
+subtle = "2"
+httparse = "1"
+socket2 = "0.6"
+base64 = "0.22"
+libc = "0.2"
+md4 = "0.11"
+md-5 = "0.11"
+hmac = "0.13"
+rustls-platform-verifier = "0.7"
+uuid = { version = "1", features = ["v4"] }
+[dev-dependencies]
+rcgen = { version = "0.14.10", default-features = false, features = ["ring", "crypto"] }
+tempfile = "3"

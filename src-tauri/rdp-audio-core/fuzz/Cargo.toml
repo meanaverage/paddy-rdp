@@ -1,0 +1,21 @@
+[package]
+name = "paddy-rdp-audio-core-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+[package.metadata]
+cargo-fuzz = true
+[dependencies]
+libfuzzer-sys = "0.4"
+paddy-rdp-audio-core = { path = ".." }
+[workspace]
+members = ["."]
+[profile.release]
+debug = 1
+overflow-checks = true
+[[bin]]
+name = "audio"
+path = "fuzz_targets/audio.rs"
+test = false
+doc = false
+bench = false

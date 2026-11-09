@@ -1,0 +1,75 @@
+{
+  "repository": "https://github.com/meanaverage/itabby",
+  "sources": {
+    "c8685a4d3b7c8a5d48520deb1c6058c69b0bb36d:rdp-plugin/src/accounts.ts": {
+      "file": "fixtures/reference/c8685a4d3b7c8a5d48520deb1c6058c69b0bb36d/accounts.ts",
+      "sha256": "788400a083bcbbb89a6d2b2a680839a999a5c527d68492d41cd9d954fe4f70fb",
+      "gitBlob": "fc6d106deb6bb6498740d0a58fad8f4943bed7f2"
+    },
+    "c8685a4d3b7c8a5d48520deb1c6058c69b0bb36d:rdp-plugin/src/desktops.ts": {
+      "file": "fixtures/reference/c8685a4d3b7c8a5d48520deb1c6058c69b0bb36d/desktops.ts",
+      "sha256": "b3c213768abcdaea578e59e1b204cf5ac92af83620b3236e9bb578051bd71502",
+      "gitBlob": "dd2dbc1a5c30c27bbb00e46f9de55ea34a26adab"
+    },
+    "2bade577d9945ba4620a8fcb5636d6c7dee4ea61:rdp-plugin/src/identity.ts": {
+      "file": "fixtures/reference/2bade577d9945ba4620a8fcb5636d6c7dee4ea61/identity.ts",
+      "sha256": "439b16c05e5824775ff2091f98ddd9d5612f0a931e7d4fc47f80b76d9c12ebd1",
+      "gitBlob": "a1a4418edf95798439b7003203dd5cae0f5a0f1c"
+    },
+    "2bade577d9945ba4620a8fcb5636d6c7dee4ea61:rdp-plugin/src/accounts.ts": {
+      "file": "fixtures/reference/2bade577d9945ba4620a8fcb5636d6c7dee4ea61/accounts.ts",
+      "sha256": "25f3acec73ea97ec6cf9121da6bda3c947d5b121bf41ca595fffb3c9a0557848",
+      "gitBlob": "0dcc132f3321fa0f4768c224fa8cff011330d054"
+    },
+    "2bade577d9945ba4620a8fcb5636d6c7dee4ea61:rdp-plugin/src/clipboard.ts": {
+      "file": "fixtures/reference/2bade577d9945ba4620a8fcb5636d6c7dee4ea61/clipboard.ts",
+      "sha256": "afea59f103a0a50af446860fe04b6fc46733281fbdb8ed013802ff6efe73588e",
+      "gitBlob": "b3129a516cc14cd28a3114290f9020c0c5766678"
+    },
+    "2bade577d9945ba4620a8fcb5636d6c7dee4ea61:rdp-plugin/src/hyperv.ts": {
+      "file": "fixtures/reference/2bade577d9945ba4620a8fcb5636d6c7dee4ea61/hyperv.ts",
+      "sha256": "f1d0608a715c7d99b37b53ab4d2e90b69c7ec8201bb9018ca6aab2a3e590594d",
+      "gitBlob": "b00ec0629f871703e7dbefa75a3f0f8219da213b"
+    },
+    "2bade577d9945ba4620a8fcb5636d6c7dee4ea61:rdp-plugin/src/wake.ts": {
+      "file": "fixtures/reference/2bade577d9945ba4620a8fcb5636d6c7dee4ea61/wake.ts",
+      "sha256": "3c4e2e99e7b3ca1daeb0cd08f03b450a3089c6608454b71be7af78556a47e474",
+      "gitBlob": "d2eada680cf3a15c4fbb635733a3cc25622b0078"
+    },
+    "2bade577d9945ba4620a8fcb5636d6c7dee4ea61:rdp-plugin/src/osd.ts": {
+      "file": "fixtures/reference/2bade577d9945ba4620a8fcb5636d6c7dee4ea61/osd.ts",
+      "sha256": "6c3b3a7a65e0557350cfa41bddbd1732f70b06a25ba35f81aad3a9d402499b4a",
+      "gitBlob": "591bbee0ecdcc7c9607b8bfc4c1d28611a44ba38"
+    },
+    "2bade577d9945ba4620a8fcb5636d6c7dee4ea61:rdp-plugin/src/desktops.ts": {
+      "file": "fixtures/reference/2bade577d9945ba4620a8fcb5636d6c7dee4ea61/desktops.ts",
+      "sha256": "4b3637b88ce31043fb9367f8cc6dbbeaa92af31d5377e8edb578953e39c2e0dc",
+      "gitBlob": "f921b0a1112971f1f778fb9efe783e93e93118b3"
+    },
+    "ca663bab74dea6d62048c5d83bf100901fcaebf9:rdp-plugin/src/fileTransfer.ts": {
+      "file": "fixtures/reference/ca663bab74dea6d62048c5d83bf100901fcaebf9/fileTransfer.ts",
+      "sha256": "8cccd2ea0e928c9b5bd140d8e008bc410125e5c2963cadb97926e3c8c53774a1",
+      "gitBlob": "f15281a4de14a3cf8870776f1c86e326d0ed107d"
+    },
+    "ed3133e64ed9b970bf38c72d55addfffa2c707d8:rdp-plugin/src/audio.ts": {
+      "file": "fixtures/reference/ed3133e64ed9b970bf38c72d55addfffa2c707d8/audio.ts",
+      "sha256": "09b7e80b5a9d5a49781a21ceaaf5d48fda5018723090530c7c439f25cacd4ba5",
+      "gitBlob": "12f29b89076e89a85d38d85c39665a87ea1a66a6"
+    },
+    "ed3133e64ed9b970bf38c72d55addfffa2c707d8:rdp-plugin/src/microphone.ts": {
+      "file": "fixtures/reference/ed3133e64ed9b970bf38c72d55addfffa2c707d8/microphone.ts",
+      "sha256": "5f97fc356cddcbb204ac7bc8c17f35ff104a0d6bb2258ee7b934a3a4797ed4f9",
+      "gitBlob": "d485bca2f150513b30cfe741df6aff7f6d6f702b"
+    },
+    "0e4d0fa9fff51c1970e5347b2c2dce6bb9ad3b07:rdp-plugin/src/rdpFile.ts": {
+      "file": "fixtures/reference/0e4d0fa9fff51c1970e5347b2c2dce6bb9ad3b07/rdpFile.ts",
+      "sha256": "64a92a7357248ac88a4535ccd92862adc8e9543c4dc2196e68c85848f39c0c63",
+      "gitBlob": "8aa133ea67be4dc1c4376ee1409fb3c4688edb72"
+    },
+    "0e4d0fa9fff51c1970e5347b2c2dce6bb9ad3b07:rdp-plugin/src/ssh.ts": {
+      "file": "fixtures/reference/0e4d0fa9fff51c1970e5347b2c2dce6bb9ad3b07/ssh.ts",
+      "sha256": "f4b6dc39c99f11bf0290e50d6e7d2c81f071681df223a593dafc34c7628b1842",
+      "gitBlob": "9a84b24db8b0961e1d63eeebc209182c6e412bfb"
+    }
+  }
+}

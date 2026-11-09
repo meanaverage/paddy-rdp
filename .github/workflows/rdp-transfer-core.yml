@@ -1,0 +1,140 @@
+name: RDP transfer core
+
+on:
+  pull_request:
+    paths:
+      - 'fixtures/**'
+      - 'sdk-provenance.json'
+      - 'src-tauri/page-core/**'
+      - 'src-tauri/js-value-core/**'
+      - 'itabby-plugin/src/rust/**'
+      - 'scripts/reference-source.mjs'
+      - 'src-tauri/rdp-transfer-core/**'
+      - 'src-tauri/page-core/**'
+      - 'rdp-plugin/src/fileTransfer.ts'
+      - 'rdp-plugin/src/transferPolicy.ts'
+      - 'rdp-plugin/src/rust/core.ts'
+      - 'rdp-plugin/src/rust/value.ts'
+      - 'rdp-plugin/src/rust/rdp-transfer.data.ts'
+      - 'itabby-plugin/src/rust/core.ts'
+      - 'itabby-plugin/src/rust/value.ts'
+      - 'scripts/rdp-transfer-core.check.mjs'
+      - 'scripts/rdp-transfer-checks.mjs'
+      - 'scripts/rust-page.check.mjs'
+      - 'scripts/rust-page.mjs'
+      - 'scripts/rust-page-options.mjs'
+      - 'scripts/build.mjs'
+      - 'rust-toolchain.toml'
+      - '.github/actions/rust-setup/**'
+      - '.github/workflows/rdp-transfer-core.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'fixtures/**'
+      - 'sdk-provenance.json'
+      - 'src-tauri/page-core/**'
+      - 'src-tauri/js-value-core/**'
+      - 'itabby-plugin/src/rust/**'
+      - 'scripts/reference-source.mjs'
+      - 'src-tauri/rdp-transfer-core/**'
+      - 'src-tauri/page-core/**'
+      - 'rdp-plugin/src/fileTransfer.ts'
+      - 'rdp-plugin/src/transferPolicy.ts'
+      - 'rdp-plugin/src/rust/core.ts'
+      - 'rdp-plugin/src/rust/value.ts'
+      - 'rdp-plugin/src/rust/rdp-transfer.data.ts'
+      - 'itabby-plugin/src/rust/core.ts'
+      - 'itabby-plugin/src/rust/value.ts'
+      - 'scripts/rdp-transfer-core.check.mjs'
+      - 'scripts/rdp-transfer-checks.mjs'
+      - 'scripts/rust-page.check.mjs'
+      - 'scripts/rust-page.mjs'
+      - 'scripts/rust-page-options.mjs'
+      - 'scripts/build.mjs'
+      - 'rust-toolchain.toml'
+      - '.github/actions/rust-setup/**'
+      - '.github/workflows/rdp-transfer-core.yml'
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rdp-transfer-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/rust-setup
+        if: runner.os == 'Linux'
+      - run: rustup show active-toolchain
+      - run: rustup component add clippy rustfmt
+      - run: cargo fmt --check --manifest-path src-tauri/rdp-transfer-core/Cargo.toml
+      - run: cargo test --locked --manifest-path src-tauri/rdp-transfer-core/Cargo.toml
+      - run: cargo clippy --locked --manifest-path src-tauri/rdp-transfer-core/Cargo.toml --all-targets -- -D warnings
+
+  page:
+    name: WebAssembly and TypeScript parity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/rust-setup
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - run: rustup target add wasm32-unknown-unknown
+      - name: Build the required page modules and reuse their caches
+        env:
+          CARGO_TARGET_DIR: target/rdp-transfer-page
+        run: |
+          node scripts/rust-page.mjs target --module rdp-transfer
+          node scripts/rust-page.mjs target --module rdp-transfer
+      - run: node scripts/rust-page.check.mjs target/rdp-transfer.data.ts
+      - run: node scripts/rdp-transfer-core.check.mjs target/rdp-transfer.data.ts
+
+  fuzz:
+    name: RDP transfer scheduling fuzzing
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/rust-setup
+        with:
+          fuzz: 'true'
+      - name: Build the request target
+        env:
+          CC: gcc
+          CFLAGS: -fsanitize=address -fno-omit-frame-pointer
+        run: cargo +nightly-2026-10-25 fuzz build --fuzz-dir src-tauri/rdp-transfer-core/fuzz transfer
+      - name: Run the bounded campaign
+        run: |
+          mkdir -p /tmp/rdp-transfer-corpus /tmp/rdp-transfer-artifacts
+          python3 src-tauri/rdp-transfer-core/fuzz/seed.py /tmp/rdp-transfer-corpus
+          src-tauri/rdp-transfer-core/fuzz/target/$PADDY_RUST_HOST/release/transfer /tmp/rdp-transfer-corpus -max_total_time=60 -max_len=8388609 -rss_limit_mb=2048 -timeout=15 -artifact_prefix=/tmp/rdp-transfer-artifacts/
+      - name: Retain crash inputs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: rdp-transfer-fuzz-artifacts
+          path: /tmp/rdp-transfer-artifacts
+          if-no-files-found: ignore

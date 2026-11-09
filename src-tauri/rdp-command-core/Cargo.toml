@@ -1,0 +1,22 @@
+[package]
+name = "paddy-rdp-command-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["io-util", "process", "time", "macros", "sync"] }
+
+[dev-dependencies]
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "test-util"] }
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[[test]]
+name = "process"
+path = "tests/process.rs"
+harness = false

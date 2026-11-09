@@ -1,0 +1,22 @@
+[package]
+name = "paddy-rdp-identity-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+[lib]
+crate-type = ["rlib", "cdylib"]
+[features]
+default = ["page"]
+page = []
+[dependencies]
+paddy-js-value-core = { path = "../js-value-core" }
+serde_json = "1"
+paddy-page-core = { path = "../page-core" }
+[profile.release]
+lto = true
+opt-level = 3
+strip = true
+panic = "abort"
+[profile.dev]
+debug = 0
+incremental = false

@@ -1,0 +1,23 @@
+[package]
+name = "paddy-rdp-desktop-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+[lib]
+crate-type = ["rlib", "cdylib"]
+[dependencies]
+paddy-js-value-core = { path = "../js-value-core" }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+ryu-js = "1"
+num-bigint = "0.4"
+num-traits = "0.2"
+paddy-rdp-identity-core = { path = "../rdp-identity-core", default-features = false }
+paddy-page-core = { path = "../page-core" }
+[profile.release]
+lto = true
+opt-level = 3
+strip = true
+panic = "abort"
+[profile.dev]
+debug = 0
+incremental = false

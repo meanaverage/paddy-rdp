@@ -1,0 +1,15 @@
+[package]
+name = "paddy-rdp-audio-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+[lib]
+crate-type = ["rlib", "cdylib"]
+[profile.release]
+lto = true
+opt-level = 3
+strip = true
+panic = "abort"
+[profile.dev]
+debug = 0
+incremental = false

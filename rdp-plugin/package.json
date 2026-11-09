@@ -1,0 +1,42 @@
+{
+  "name": "tabby-rdp",
+  "version": "0.6.0",
+  "description": "Paddy core component for Windows and Linux remote desktops over RDP, SSH, and RD Gateway",
+  "keywords": [
+    "tabby-builtin-plugin"
+  ],
+  "homepage": "https://github.com/meanaverage/paddy-rdp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/meanaverage/paddy-rdp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/meanaverage/paddy-rdp/issues"
+  },
+  "author": "meanaverage",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "vendor",
+    "remote",
+    "LICENSE",
+    "CHANGELOG.md",
+    "TROUBLESHOOTING.md",
+    "docs/desk.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "tabbyRdp": {
+    "minimumTabbyVersion": "1.0.236",
+    "rollbackFloor": "0.5.3",
+    "packageFormat": 2
+  },
+  "private": true,
+  "devDependencies": {
+    "@tauri-apps/api": "2.12.3"
+  }
+}

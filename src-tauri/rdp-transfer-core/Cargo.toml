@@ -1,0 +1,19 @@
+[package]
+name = "paddy-rdp-transfer-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+[lib]
+crate-type = ["rlib", "cdylib"]
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+paddy-page-core = { path = "../page-core" }
+[profile.release]
+lto = true
+opt-level = 3
+strip = true
+panic = "abort"
+[profile.dev]
+debug = 0
+incremental = false
