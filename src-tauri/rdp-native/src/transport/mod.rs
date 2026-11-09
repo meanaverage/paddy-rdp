@@ -1526,15 +1526,20 @@ mod proxy_tests {
         listener.abort();
     }
 
-    #[tokio::test]
-    async fn relays_over_a_process() {
-        let (server, fingerprint) = fake_rdp_server().await;
+    fn process_fixture() -> (tempfile::TempDir, String) {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("stdio-tunnel.rs");
         let program = dir.path().join(if cfg!(windows) { "stdio-tunnel.exe" } else { "stdio-tunnel" });
         std::fs::write(&source, include_str!("../../tests/fixtures/stdio-tunnel.rs")).unwrap();
         let built = std::process::Command::new("rustc").arg("--edition=2021").arg(&source).arg("-o").arg(&program).output().unwrap();
         assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+        (dir, program.to_string_lossy().into_owned())
+    }
+
+    #[tokio::test]
+    async fn relays_over_a_process() {
+        let (_fixture, program) = process_fixture();
+        let (server, fingerprint) = fake_rdp_server().await;
         relays_through(serde_json::json!({ "kind": "process", "program": program, "args": [format!("127.0.0.1:{server}")] }), &fingerprint).await;
     }
 
@@ -1554,9 +1559,10 @@ mod proxy_tests {
 
     #[tokio::test]
     async fn failing_process_says_why() {
-        let upstream = Upstream::Process { program: "sh".into(), args: vec!["-c".into(), "echo 'Permission denied (publickey).' >&2; exit 255".into()] };
+        let (_fixture, program) = process_fixture();
+        let upstream = Upstream::Process { program: program.clone(), args: vec!["--fail".into()] };
         let err = open_direct(&upstream, None).await.err().unwrap();
-        assert_eq!(err, "sh failed: Permission denied (publickey).");
+        assert_eq!(err, format!("{program} failed: Permission denied (publickey)."));
     }
 }
 
