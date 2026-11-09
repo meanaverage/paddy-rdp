@@ -1,0 +1,3 @@
+# Vendor and reference hashes describe the committed bytes on every platform.
+* text=auto eol=lf
+*.wasm binary

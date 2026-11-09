@@ -6,7 +6,7 @@ import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('../rdp-plugin/', import.meta.url))
 let checked = 0
-for (const line of fs.readFileSync(path.join(root, 'vendor/SHA256SUMS'), 'utf8').split('\n')) {
+for (const line of fs.readFileSync(path.join(root, 'vendor/SHA256SUMS'), 'utf8').split(/\r?\n/)) {
     const match = /^([a-f0-9]{64})\s+(vendor\/[^\s]+)$/.exec(line)
     if (!match) continue
     const actual = createHash('sha256').update(fs.readFileSync(path.join(root, match[2]))).digest('hex')
