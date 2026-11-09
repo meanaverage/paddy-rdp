@@ -4,7 +4,12 @@ import { invoke } from '@tauri-apps/api/core'
 import { BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { probesIn } from './probe'
 import { execRemote, sshClientHandle, isConnected, isSSHTab, pingRemote, SSHTab } from './ssh'
-export type Upstream = { kind: string, [key: string]: any }
+/** Streams the host can open; gateway negotiation belongs to the RDP component. */
+export type Upstream =
+    | { kind: 'tcp', host: string, port: number }
+    | { kind: 'process', program: string, args: string[] }
+    | { kind: 'sshTcp', client: number, host: string, port: number }
+    | { kind: 'sshExec', client: number, command: string }
 const shq = (value: string): string => "'" + value.replaceAll("'", "'\\''") + "'"
 async function identity<T>(op: string, a: string, b: string, c?: string): Promise<T> {
     const result = await invoke<string>('ssh_target_identity', { request: { op, a: JSON.stringify(a), b: JSON.stringify(b), c: c === undefined ? undefined : JSON.stringify(c) } })

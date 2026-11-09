@@ -66,7 +66,7 @@
     "sdk/host/probe.ts": "060354f4c1ce54f8689e49ec93d1bbba03bd81b131619b5d90d3f11548fdcfa7",
     "sdk/host/ssh.ts": "39a96149ca5bf973e4de4579b59e673c63ddc9fe3f1224174d40c00867117455",
     "sdk/host/sshChannelStream.ts": "23765e32d894dd24fb82bab7a551f404e278cd324fe45d1c4f83610ba37fe015",
-    "sdk/host/targets.ts": "ff4ea3534fee620b7370c886ff7c283c2772d05d880991c80f1e462c08bf92cc",
+    "sdk/host/targets.ts": "2d9f8111fb9100a5a55fd37d6c252406a08478f2242c3a5285d05db153ce213b",
     "sdk/host/byteQueue.ts": "0db8ec5397c35c34cf496928ce41e04a137fcff96f90e1e9476286f3f9c23b0e"
   }
 }

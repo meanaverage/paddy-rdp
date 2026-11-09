@@ -24,3 +24,4 @@ jobs:
         with:
           node-version: '24'
       - run: node scripts/check-rdp-assets.mjs
+      - run: node scripts/check-sdk.mjs
