@@ -448,6 +448,12 @@ export class DesktopSession {
      * (see focusSoon) go ahead. Its pane's focus hands it over later.
      */
     inFront: () => boolean = () => true
+    /**
+     * Whether something of the page over the panes holds the keyboard (a dialog's field, the icon picker, the glass
+     * menu), asked before the desktop takes it by itself (see focusDesktop). Its pane is given the focus again when
+     * that lets go, and the pane's focus hands the keyboard to the desktop (see RemoteDesktopService's focused$).
+     */
+    keyboardHeld: () => boolean = () => false
     /** Resolves when the session is disposed (ends a pending sign-in). */
     readonly disposed: Promise<void>
     private markDisposed!: () => void
@@ -516,7 +522,7 @@ export class DesktopSession {
         // setVisible(): the terminal can't take focus while the desktop shows; this catches the rest.
         this.container = container
         container.addEventListener('focusin', this.reclaimFocus, true)
-        this.overlay.addEventListener('mousedown', () => this.focusDesktop())
+        this.overlay.addEventListener('mousedown', () => this.focusDesktop(30, true))
         // View only: the layer takes the mouse, so the wheel scrolls an actual-size picture instead of the remote.
         this.overlay.querySelector('.trd-view-only')!.addEventListener('wheel', event => {
             const wheel = event as WheelEvent
@@ -731,8 +737,15 @@ export class DesktopSession {
         this.remoteSize = null
     }
 
-    /** Focuses the remote desktop. IronRDP reveals its canvas asynchronously, so retry for about half a second. */
-    focusDesktop (attempts = 30): void {
+    /**
+     * Focuses the remote desktop. IronRDP reveals its canvas asynchronously, so retry for about half a second. Not while
+     * something over the panes holds the keyboard (see keyboardHeld), unless `asked`: a press on the desktop, or keys
+     * sent to it from a menu.
+     */
+    focusDesktop (attempts = 30, asked = false): void {
+        if (!asked && this.keyboardHeld()) {
+            return
+        }
         // While the sign-in form shows, it is what takes focus back (the user name, or the password once filled).
         const signin = this.overlay.querySelector<HTMLFormElement>('.trd-signin form')
         if (signin) {
@@ -2061,6 +2074,9 @@ export class RemoteDesktopService {
             // a sign-in (cancelled, or a setup that failed) goes there again, not to the tab's own host.
             created.remote = target
             created.inFront = () => this.showsInFront(created)
+            // (Paddy's page answers, and gives the pane the focus again when what holds the keyboard lets go; without
+            // it, nothing holds it)
+            created.keyboardHeld = () => !!(window as any).paddyPaneKeyboardHeld?.(pane)
             // View only stays on for the same desktop shown again after its server ended it, as on a reconnect: the
             // keys typed there would go to it otherwise.
             if (options.viewOnly || ended?.key === key && ended.viewOnly) {
@@ -2928,7 +2944,7 @@ export class RemoteDesktopService {
         // After a tab switch, the pane shows on Angular's next change detection. Not once the user went elsewhere
         // meanwhile: the keyboard stays where they went.
         for (let i = 0; i < 30 && this.showsInFront(session); i++) {
-            session.focusDesktop(1)
+            session.focusDesktop(1, true)
             const focused = document.activeElement
             if (focused?.tagName === 'IRON-REMOTE-DESKTOP' && session.overlay.contains(focused)) {
                 return true
