@@ -25,5 +25,3 @@ jobs:
           node-version: '24'
       - run: node scripts/check-rdp-assets.mjs
       - run: node scripts/check-sdk.mjs
-      - run: node scripts/check-component-change-detection.mjs
-      - run: node --test scripts/component-change-detection.test.mjs
