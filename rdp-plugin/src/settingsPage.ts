@@ -1,4 +1,4 @@
-import { Component, ComponentRef, ElementRef, HostBinding, Injectable, Injector, NgZone, OnDestroy, OnInit, ViewContainerRef } from '@angular/core'
+import { ChangeDetectionStrategy, Component, ComponentRef, ElementRef, HostBinding, Injectable, Injector, NgZone, OnDestroy, OnInit, ViewContainerRef } from '@angular/core'
 import { basename } from 'path'
 import { Subscription } from 'rxjs'
 import { AppService, ConfigService, HotkeyDescription, HotkeysService, NotificationsService, PlatformService, ProfilesService } from 'tabby-core'
@@ -175,6 +175,7 @@ type Toggle = Exclude<{ [K in keyof DesktopSettings]: DesktopSettings[K] extends
     standalone: false,
     selector: 'remote-desktop-settings',
     template: '',
+    changeDetection: ChangeDetectionStrategy.Eager,
 })
 export class RemoteDesktopSettingsComponent implements OnInit, OnDestroy {
     @HostBinding('class.content-box') contentBox = true
