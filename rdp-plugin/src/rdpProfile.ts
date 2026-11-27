@@ -1,4 +1,4 @@
-import { Component, ElementRef, Injectable, Injector, NgZone, OnInit, ViewEncapsulation } from '@angular/core'
+import { ChangeDetectionStrategy, Component, ElementRef, Injectable, Injector, NgZone, OnInit, ViewEncapsulation } from '@angular/core'
 import {
     BaseTabComponent, Command, CommandProvider, ConfigService, ConnectableProfile, NewTabParameters, PartialProfile,
     ProfileSettingsComponent, ProfilesService, QuickConnectProfileProvider, RecoveryToken, TabRecoveryProvider,
@@ -74,6 +74,7 @@ rdp-tab .trd-rdp-idle { position: absolute; inset: 0; display: flex; flex-direct
     styles: [TAB_STYLE],
     // The idle message is built by hand, outside the template, so its styles can't be scoped to it.
     encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Eager,
 })
 export class RDPTabComponent extends BaseTabComponent implements OnInit {
     profile!: RDPProfile
@@ -161,6 +162,7 @@ export class RDPTabRecovery extends TabRecoveryProvider<RDPTabComponent> {
     standalone: false,
     selector: 'rdp-profile-settings',
     template: '',
+    changeDetection: ChangeDetectionStrategy.Eager,
 })
 export class RDPProfileSettingsComponent implements ProfileSettingsComponent<RDPProfile, any>, OnInit {
     profile!: RDPProfile
