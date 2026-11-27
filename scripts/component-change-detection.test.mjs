@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -11,260 +11,447 @@ import {
 } from './check-component-change-detection.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('../', import.meta.url))
+const CLI_PATH = path.join(REPO_ROOT, 'scripts/check-component-change-detection.mjs')
 
-test('repository plugin sources declare explicit changeDetection on every @Component', () => {
+test('repository plugin sources declare ChangeDetectionStrategy.Eager on all 4 @Component decorators', () => {
     const result = checkComponentChangeDetection(REPO_ROOT)
-    assert.deepEqual(result.issues, [])
-    assert.ok(result.checked >= 4, `expected at least 4 components, got ${result.checked}`)
-    const byFile = new Map(result.componentFiles.map(entry => [entry.file, entry.count]))
-    assert.ok((byFile.get('rdp-plugin/src/rdpProfile.ts') ?? 0) >= 2)
-    assert.ok((byFile.get('rdp-plugin/src/settingsPage.ts') ?? 0) >= 1)
-    assert.ok((byFile.get('rdp-plugin/src/settingsToggle.ts') ?? 0) >= 1)
+    assert.deepEqual(result, {
+        checked: 4,
+        componentFiles: [
+            { file: 'rdp-plugin/src/rdpProfile.ts', count: 2, strategies: ['Eager', 'Eager'] },
+            { file: 'rdp-plugin/src/settingsPage.ts', count: 1, strategies: ['Eager'] },
+            { file: 'rdp-plugin/src/settingsToggle.ts', count: 1, strategies: ['Eager'] },
+        ],
+        strategies: ['Eager', 'Eager', 'Eager', 'Eager'],
+        issues: [],
+    })
 })
 
-test('CLI entry point succeeds on the repository tree', () => {
-    const stdout = execFileSync(
-        process.execPath,
-        [path.join(REPO_ROOT, 'scripts/check-component-change-detection.mjs')],
-        { cwd: REPO_ROOT, encoding: 'utf8' },
-    )
-    const match = /^Verified (\d+) @Component decorator\(s\) declare explicit changeDetection\r?\n$/.exec(stdout)
-    assert.ok(match, `unexpected CLI output: ${JSON.stringify(stdout)}`)
-    assert.ok(Number(match[1]) >= 4)
+test('CLI subprocess succeeds on repository tree and fails on temp tree with nested failing .ts while ignoring .d.ts', () => {
+    const okRun = spawnSync(process.execPath, [CLI_PATH], { cwd: REPO_ROOT, encoding: 'utf8' })
+    assert.equal(okRun.status, 0, `expected exit 0, got ${okRun.status}: ${okRun.stderr}`)
+    assert.match(okRun.stdout, /^Verified 4 @Component decorator\(s\) declare explicit changeDetection\r?\n$/)
+
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paddy-rdp-cd-'))
+    try {
+        const srcDir = path.join(tmp, 'rdp-plugin', 'src')
+        const subDir = path.join(srcDir, 'sub')
+        fs.mkdirSync(subDir, { recursive: true })
+        fs.writeFileSync(
+            path.join(srcDir, 'ok.ts'),
+            [
+                "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+                '@Component({',
+                "    selector: 'app-ok',",
+                '    changeDetection: ChangeDetectionStrategy.Eager,',
+                '})',
+                'export class OkComponent {}',
+                '',
+            ].join('\n'),
+        )
+        fs.writeFileSync(
+            path.join(srcDir, 'types.d.ts'),
+            "@Component({ selector: 'ignored-dts' })\nexport declare class IgnoredDts {}\n",
+        )
+        fs.writeFileSync(
+            path.join(srcDir, 'notes.txt'),
+            "@Component({ selector: 'ignored-txt' })\n",
+        )
+        fs.writeFileSync(
+            path.join(subDir, 'bad.ts'),
+            [
+                "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+                '',
+                '@Component({',
+                "    selector: 'app-bad',",
+                "    template: '',",
+                '})',
+                'export class BadComponent {}',
+                '',
+            ].join('\n'),
+        )
+
+        const dirResult = checkComponentChangeDetection(tmp)
+        assert.equal(dirResult.checked, 2)
+        assert.deepEqual(dirResult.strategies, ['Eager'])
+        assert.deepEqual(dirResult.componentFiles, [
+            { file: 'rdp-plugin/src/ok.ts', count: 1, strategies: ['Eager'] },
+            { file: 'rdp-plugin/src/sub/bad.ts', count: 1, strategies: [] },
+        ])
+        assert.equal(dirResult.issues.length, 1)
+        assert.match(
+            dirResult.issues[0],
+            /^rdp-plugin\/src\/sub\/bad\.ts:3: @Component is missing an explicit changeDetection property/,
+        )
+
+        const failRun = spawnSync(process.execPath, [CLI_PATH, tmp], { cwd: REPO_ROOT, encoding: 'utf8' })
+        assert.notEqual(failRun.status, 0, 'expected non-zero exit code on failing temp tree')
+        assert.match(failRun.stderr, /Component changeDetection check failed:/)
+        assert.match(
+            failRun.stderr,
+            /rdp-plugin\/src\/sub\/bad\.ts:3: @Component is missing an explicit changeDetection property/,
+        )
+        assert.doesNotMatch(failRun.stderr, /types\.d\.ts/)
+        assert.doesNotMatch(failRun.stderr, /notes\.txt/)
+    } finally {
+        fs.rmSync(tmp, { recursive: true, force: true })
+    }
 })
 
-test('accepts explicit Eager and OnPush across named, aliased, and namespace imports', () => {
-    const named = `
-import { ChangeDetectionStrategy, Component } from '@angular/core'
-@Component({
-    selector: 'app-eager',
-    template: '',
-    changeDetection: ChangeDetectionStrategy.Eager,
-})
-export class EagerComponent {}
-
-@Component({
-    selector: 'app-onpush',
-    template: '',
-    'changeDetection': ChangeDetectionStrategy.OnPush
-})
-export class OnPushComponent {}
-`
-    assert.deepEqual(findComponentChangeDetectionIssues(named, 'named.ts'), { checked: 2, issues: [] })
-
-    const aliased = `
-import { Component as NgComponent, ChangeDetectionStrategy as CD } from "@angular/core"
-@NgComponent({ selector: 'app-a', template: '', changeDetection: CD.Eager })
-export class AliasedComponent {}
-`
-    assert.deepEqual(findComponentChangeDetectionIssues(aliased, 'aliased.ts'), { checked: 1, issues: [] })
-
-    const namespaced = `
-import * as ng from '@angular/core'
-@ng.Component({ selector: 'app-n', template: '', changeDetection: ng.ChangeDetectionStrategy.OnPush })
-export class NamespacedComponent {}
-`
-    assert.deepEqual(findComponentChangeDetectionIssues(namespaced, 'ns.ts'), { checked: 1, issues: [] })
+test('accepts canonical Eager and OnPush across LF, CRLF, multi-line imports, comments, and nested objects', () => {
+    const lf = [
+        'import {',
+        '    ChangeDetectionStrategy,',
+        '    Component,',
+        "} from '@angular/core'",
+        '@Component({',
+        "    selector: 'app-eager',",
+        "    template: 'changeDetection',",
+        "    // apostrophe can't break comment stripping",
+        "    host: { '[class.a]': 'true' },",
+        '    changeDetection: ChangeDetectionStrategy.Eager, // trailing note',
+        '})',
+        'export class EagerComponent {}',
+        '',
+        '@Component({',
+        "    selector: 'app-onpush',",
+        '    changeDetection: ChangeDetectionStrategy.OnPush',
+        '})',
+        'export class OnPushComponent {}',
+        '',
+    ].join('\n')
+    const expected = { checked: 2, strategies: ['Eager', 'OnPush'], issues: [] }
+    assert.deepEqual(findComponentChangeDetectionIssues(lf, 'valid.ts'), expected)
+    assert.deepEqual(findComponentChangeDetectionIssues(lf.replaceAll('\n', '\r\n'), 'valid.ts'), expected)
 })
 
-test('rejects @Component missing changeDetection with exact file and line (LF and CRLF)', () => {
+test('rejects missing changeDetection with exact line (LF and CRLF) even when present in comments, strings, or nested objects', () => {
     const lf = [
         "import { ChangeDetectionStrategy, Component } from '@angular/core'",
-        '@Component({ selector: "ok", template: "", changeDetection: ChangeDetectionStrategy.Eager })',
+        '@Component({',
+        "    selector: 'ok',",
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '})',
         'export class First {}',
         '',
         '@Component({',
-        '    selector: "missing",',
-        '    template: "",',
+        "    selector: 'missing',",
+        '    // changeDetection: ChangeDetectionStrategy.Eager,',
+        '    /*',
+        '    changeDetection: ChangeDetectionStrategy.OnPush,',
+        '    */',
+        '    template: `',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '`,',
+        '    host: {',
+        '        changeDetection: ChangeDetectionStrategy.Eager,',
+        '    },',
+        '    providers: [{ provide: X, useValue: { changeDetection: ChangeDetectionStrategy.Eager } }],',
         '})',
         'export class Second {}',
     ].join('\n')
     const lfResult = findComponentChangeDetectionIssues(lf, 'sample.ts')
     assert.equal(lfResult.checked, 2)
+    assert.deepEqual(lfResult.strategies, ['Eager'])
     assert.equal(lfResult.issues.length, 1)
-    assert.match(lfResult.issues[0], /^sample\.ts:5: @Component is missing an explicit changeDetection property/)
+    assert.match(lfResult.issues[0], /^sample\.ts:8: @Component is missing an explicit changeDetection property/)
 
-    const crlf = lf.replaceAll('\n', '\r\n')
-    const crlfResult = findComponentChangeDetectionIssues(crlf, 'sample.ts')
+    const crlfResult = findComponentChangeDetectionIssues(lf.replaceAll('\n', '\r\n'), 'sample.ts')
     assert.deepEqual(crlfResult, lfResult)
 })
 
-test('rejects deprecated Default and non-enum changeDetection values', () => {
-    const deprecated = `
-import { ChangeDetectionStrategy, Component } from '@angular/core'
-@Component({
-    selector: 'x',
-    changeDetection: ChangeDetectionStrategy.Default,
+test('rejects Default, invalid expressions, duplicates, spreads, and computed keys', () => {
+    const deprecated = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        "    selector: 'x',",
+        '    changeDetection: ChangeDetectionStrategy.Default,',
+        '})',
+        'export class DefaultComponent {}',
+    ].join('\n')
+    const depRes = findComponentChangeDetectionIssues(deprecated, 'dep.ts')
+    assert.equal(depRes.checked, 1)
+    assert.deepEqual(depRes.strategies, [])
+    assert.deepEqual(depRes.issues, [
+        'dep.ts:4: @Component changeDetection must be ChangeDetectionStrategy.Eager or ChangeDetectionStrategy.OnPush',
+    ])
+
+    const numeric = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: 1,',
+        '})',
+    ].join('\n')
+    assert.match(findComponentChangeDetectionIssues(numeric, 'num.ts').issues[0], /^num\.ts:3: @Component changeDetection must be/)
+
+    const shorthand = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        'const changeDetection = ChangeDetectionStrategy.Eager',
+        '@Component({',
+        '    changeDetection,',
+        '})',
+    ].join('\n')
+    assert.match(findComponentChangeDetectionIssues(shorthand, 'short.ts').issues[0], /^short\.ts:4: @Component changeDetection must be/)
+
+    const sameLineProp = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        "    selector: 'x', changeDetection: ChangeDetectionStrategy.Eager,",
+        '})',
+    ].join('\n')
+    assert.match(findComponentChangeDetectionIssues(sameLineProp, 'same.ts').issues[0], /^same\.ts:3: @Component changeDetection must be/)
+
+    const duplicate = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        "    selector: 'dup',",
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '    changeDetection: ChangeDetectionStrategy.OnPush,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(duplicate, 'dup.ts').issues, [
+        'dup.ts:2: @Component declares changeDetection more than once',
+    ])
+
+    const quotedDupSingle = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        "    'changeDetection': ChangeDetectionStrategy.Default,",
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(quotedDupSingle, 'qdup1.ts').issues, [
+        'qdup1.ts:2: @Component declares changeDetection more than once',
+    ])
+
+    const quotedDupDouble = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '    "changeDetection": ChangeDetectionStrategy.Default,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(quotedDupDouble, 'qdup2.ts').issues, [
+        'qdup2.ts:2: @Component declares changeDetection more than once',
+    ])
+
+    const spread = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '    ...meta,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(spread, 'spread.ts').issues, [
+        'spread.ts:2: @Component must not use object spread (...)',
+    ])
+
+    const computed = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        "    ['changeDetection']: ChangeDetectionStrategy.Default,",
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(computed, 'comp.ts').issues, [
+        'comp.ts:2: @Component must not use computed property keys',
+    ])
+
+    const nestedComputed = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '    [keys[0]]: ChangeDetectionStrategy.Default,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(nestedComputed, 'comp2.ts').issues, [
+        'comp2.ts:2: @Component must not use computed property keys',
+    ])
 })
-export class DefaultComponent {}
-`
-    const res1 = findComponentChangeDetectionIssues(deprecated, 'dep.ts')
-    assert.equal(res1.checked, 1)
-    assert.equal(res1.issues.length, 1)
-    assert.match(res1.issues[0], /^dep\.ts:5: @Component changeDetection must be ChangeDetectionStrategy\.Eager or ChangeDetectionStrategy\.OnPush \(found ChangeDetectionStrategy\.Default\)$/)
 
-    const namespacedDeprecated = `
-import * as ng from '@angular/core'
-@ng.Component({
-    selector: 'x',
-    changeDetection: ng.ChangeDetectionStrategy.Default,
+test('rejects non-canonical @Component forms, aliased imports, and delimiter-splitting bypasses', () => {
+    const oneLine = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        "@Component({ selector: 'x', changeDetection: ChangeDetectionStrategy.Eager })",
+        'export class OneLine {}',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(oneLine, 'one.ts').issues, [
+        'one.ts:2: @Component must use canonical multi-line @Component({ ... }) form',
+    ])
+
+    const dynamic = [
+        "import { Component } from '@angular/core'",
+        '@Component(meta)',
+        'export class Dynamic {}',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(dynamic, 'dyn.ts').issues, [
+        'dyn.ts:2: @Component must use canonical multi-line @Component({ ... }) form',
+    ])
+
+    const namespaced = [
+        "import * as ng from '@angular/core'",
+        '@ng.Component({',
+        '    changeDetection: ng.ChangeDetectionStrategy.Eager,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(namespaced, 'ns.ts').issues, [
+        'ns.ts:2: @Component must use canonical multi-line @Component({ ... }) form',
+    ])
+
+    const indented = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        'function make () {',
+        '    @Component({',
+        '        changeDetection: ChangeDetectionStrategy.Eager,',
+        '})',
+        '    class Inner {}',
+        '    return Inner',
+        '}',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(indented, 'indent.ts').issues, [
+        'indent.ts:3: @Component must use canonical multi-line @Component({ ... }) form',
+    ])
+
+    const aliasedImport = [
+        "import { ChangeDetectionStrategy, Component as NgComponent } from '@angular/core'",
+        '@NgComponent({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(aliasedImport, 'alias.ts').issues, [
+        'alias.ts:1: @angular/core Component import must not be aliased',
+    ])
+
+    const unterminatedSwallow = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        "    selector: 'broken',",
+        'export class Broken {}',
+        '@Component({',
+        "    selector: 'good',",
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '})',
+        'export class Good {}',
+    ].join('\n')
+    const swallowRes = findComponentChangeDetectionIssues(unterminatedSwallow, 'swallow.ts')
+    assert.equal(swallowRes.checked, 2)
+    assert.deepEqual(swallowRes.issues, [
+        'swallow.ts:2: @Component must use canonical multi-line @Component({ ... }) form',
+    ])
+
+    const templateSplit = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '    template: `',
+        '})',
+        '`,',
+        '    changeDetection: ChangeDetectionStrategy.Default,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(templateSplit, 'tpl-split.ts').issues, [
+        'tpl-split.ts:2: @Component block has malformed syntax or unbalanced delimiters',
+    ])
+
+    const nestedBacktick = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    template: `${`',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '`}`,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(nestedBacktick, 'nested-bt.ts').issues, [
+        'nested-bt.ts:2: @Component block has malformed syntax or unbalanced delimiters',
+    ])
+
+    const commentSplit = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '    /*',
+        '})',
+        '    */',
+        '    changeDetection: ChangeDetectionStrategy.Default,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(commentSplit, 'cmt-split.ts').issues, [
+        'cmt-split.ts:2: @Component block has malformed syntax or unbalanced delimiters',
+    ])
+
+    const braceSplit = [
+        "import { ChangeDetectionStrategy, Component } from '@angular/core'",
+        '@Component({',
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '    extra: wrap({',
+        '        a: 1,',
+        '})',
+        '    ,',
+        '    changeDetection: ChangeDetectionStrategy.Default,',
+        '})',
+    ].join('\n')
+    assert.deepEqual(findComponentChangeDetectionIssues(braceSplit, 'brace-split.ts').issues, [
+        'brace-split.ts:2: @Component block has malformed syntax or unbalanced delimiters',
+    ])
 })
-export class DefaultNsComponent {}
-`
-    const resNs = findComponentChangeDetectionIssues(namespacedDeprecated, 'dep-ns.ts')
-    assert.equal(resNs.issues.length, 1)
-    assert.match(resNs.issues[0], /^dep-ns\.ts:5: .*ng\.ChangeDetectionStrategy\.Default/)
 
-    const numeric = `
-import { ChangeDetectionStrategy, Component } from '@angular/core'
-@Component({ selector: 'x', changeDetection: 1 })
-export class NumericComponent {}
-`
-    const res2 = findComponentChangeDetectionIssues(numeric, 'num.ts')
-    assert.equal(res2.issues.length, 1)
-    assert.match(res2.issues[0], /^num\.ts:3: @Component changeDetection must be .* \(found 1\)$/)
-
-    const shorthand = `
-import { Component } from '@angular/core'
-const changeDetection = 1
-@Component({ selector: 'x', changeDetection })
-export class ShorthandComponent {}
-`
-    const res3 = findComponentChangeDetectionIssues(shorthand, 'short.ts')
-    assert.equal(res3.issues.length, 1)
-    assert.match(res3.issues[0], /^short\.ts:4: @Component changeDetection must use an explicit/)
+test('catches invalid @Component after tricky preceding TypeScript syntax', () => {
+    const tricky = [
+        "import { Component } from '@angular/core'",
+        "if (x) /'/.test(y)",
+        "const tpl = `${/'/.test(x)}`",
+        "const half = w! / 2 // don't break parsing",
+        'const actions = { import: () => {} }',
+        "export { ChangeDetectionStrategy } from '@angular/core'",
+        '',
+        '@Component({',
+        "    selector: 'after-tricky-missing',",
+        '})',
+        'export class MissingAfterTricky {}',
+        '',
+        '@Component({',
+        "    selector: 'after-tricky-reexport',",
+        '    changeDetection: ChangeDetectionStrategy.Eager,',
+        '})',
+        'export class ReexportAfterTricky {}',
+    ].join('\n')
+    const res = findComponentChangeDetectionIssues(tricky, 'tricky.ts')
+    assert.equal(res.checked, 2)
+    assert.deepEqual(res.strategies, [])
+    assert.deepEqual(res.issues, [
+        'tricky.ts:8: @Component is missing an explicit changeDetection property (use ChangeDetectionStrategy.Eager or ChangeDetectionStrategy.OnPush)',
+        "tricky.ts:15: @Component changeDetection requires a value import of ChangeDetectionStrategy from '@angular/core'",
+    ])
 })
 
 test('requires a runtime value import of ChangeDetectionStrategy from @angular/core', () => {
-    const missingImport = `
-import { Component } from '@angular/core'
-@Component({ selector: 'x', changeDetection: ChangeDetectionStrategy.Eager })
-export class MissingImportComponent {}
-`
-    const res1 = findComponentChangeDetectionIssues(missingImport, 'missing-import.ts')
-    assert.equal(res1.issues.length, 1)
-    assert.match(res1.issues[0], /without a value import of ChangeDetectionStrategy from '@angular\/core'/)
-
-    const typeOnlyImport = `
-import './polyfill'
-import type { ChangeDetectionStrategy } from '@angular/core'
-import { Component } from '@angular/core'
-@Component({ selector: 'x', changeDetection: ChangeDetectionStrategy.Eager })
-export class TypeOnlyComponent {}
-`
-    const res2 = findComponentChangeDetectionIssues(typeOnlyImport, 'type-only.ts')
-    assert.equal(res2.issues.length, 1)
-    assert.match(res2.issues[0], /without a value import of ChangeDetectionStrategy/)
-
-    const inlineTypeSpecifier = `
-import { Component, type ChangeDetectionStrategy } from '@angular/core'
-@Component({ selector: 'x', changeDetection: ChangeDetectionStrategy.OnPush })
-export class InlineTypeComponent {}
-`
-    const res3 = findComponentChangeDetectionIssues(inlineTypeSpecifier, 'inline-type.ts')
-    assert.equal(res3.issues.length, 1)
-    assert.match(res3.issues[0], /without a value import of ChangeDetectionStrategy/)
-
-    const unimportedNamespace = `
-import { Component } from '@angular/core'
-@Component({ selector: 'x', changeDetection: ng.ChangeDetectionStrategy.Eager })
-export class MissingNsComponent {}
-`
-    const res4 = findComponentChangeDetectionIssues(unimportedNamespace, 'missing-ns.ts')
-    assert.equal(res4.issues.length, 1)
-    assert.match(res4.issues[0], /without a namespace import of '@angular\/core'/)
-
-    const sideEffectBeforeReexport = `
-import './polyfill'
-export { ChangeDetectionStrategy } from '@angular/core'
-import { Component } from '@angular/core'
-@Component({ selector: 'x', changeDetection: ChangeDetectionStrategy.Eager })
-export class ReexportNotLocalComponent {}
-`
-    const res5 = findComponentChangeDetectionIssues(sideEffectBeforeReexport, 'reexport.ts')
-    assert.equal(res5.issues.length, 1)
-    assert.match(res5.issues[0], /without a value import of ChangeDetectionStrategy from '@angular\/core'/)
+    const cases = [
+        ['missing.ts', "import { Component } from '@angular/core'"],
+        ['type-only.ts', "import type { ChangeDetectionStrategy } from '@angular/core'\nimport { Component } from '@angular/core'"],
+        ['inline-type.ts', "import { Component, type ChangeDetectionStrategy } from '@angular/core'"],
+        ['reexport.ts', "import './polyfill'\nexport { ChangeDetectionStrategy } from '@angular/core'\nimport { Component } from '@angular/core'"],
+        ['other-pkg.ts', "import { ChangeDetectionStrategy } from 'other-pkg'\nimport { Component } from '@angular/core'"],
+        ['aliased-cd.ts', "import { Component, ChangeDetectionStrategy as CD } from '@angular/core'"],
+    ]
+    for (const [name, header] of cases) {
+        const src = [
+            header,
+            '@Component({',
+            "    selector: 'x',",
+            '    changeDetection: ChangeDetectionStrategy.Eager,',
+            '})',
+            'export class Sample {}',
+        ].join('\n')
+        const res = findComponentChangeDetectionIssues(src, name)
+        assert.equal(res.checked, 1, name)
+        assert.deepEqual(res.strategies, [], name)
+        assert.equal(res.issues.length, 1, name)
+        assert.match(res.issues[0], /requires a value import of ChangeDetectionStrategy from '@angular\/core'/, name)
+    }
 })
 
-test('ignores changeDetection inside nested objects, comments, strings, templates, and regexes', () => {
-    const tricky = `
-import { ChangeDetectionStrategy, Component } from '@angular/core'
-// @Component({ selector: 'fake-line' })
-/* @Component({ selector: 'fake-block' }) */
-const s = "@Component({ selector: 'fake-str' })"
-const t = \`@Component({ selector: 'fake-tpl', inner: \${ { a: 1 } } })\`
-const r1 = /@Component\\(['"\\\`\\/]/g
-let x = 1
-const div = x++ / 2
-const obj = { return: 4 }
-const div2 = obj.return / 2
-
-@Component({
-    selector: 'nested-only',
-    // changeDetection: ChangeDetectionStrategy.Eager,
-    /* changeDetection: ChangeDetectionStrategy.OnPush */
-    template: \`<div>changeDetection: ChangeDetectionStrategy.Eager \${ { changeDetection: ChangeDetectionStrategy.Eager } }</div>\`,
-    host: { class: 'a', changeDetection: ChangeDetectionStrategy.Eager },
-})
-export class NestedOnlyComponent {}
-`
-    const res = findComponentChangeDetectionIssues(tricky, 'tricky.ts')
-    assert.equal(res.checked, 1)
-    assert.equal(res.issues.length, 1)
-    assert.match(res.issues[0], /^tricky\.ts:13: @Component is missing an explicit changeDetection property/)
-})
-
-test('rejects duplicate changeDetection properties and non-object or malformed @Component arguments', () => {
-    const duplicate = `
-import { ChangeDetectionStrategy, Component } from '@angular/core'
-@Component({
-    selector: 'dup',
-    changeDetection: ChangeDetectionStrategy.Eager,
-    changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class DupComponent {}
-`
-    const dupRes = findComponentChangeDetectionIssues(duplicate, 'dup.ts')
-    assert.equal(dupRes.issues.length, 1)
-    assert.match(dupRes.issues[0], /^dup\.ts:3: @Component declares changeDetection more than once/)
-
-    const nonObject = `
-import { Component } from '@angular/core'
-const meta = {}
-@Component(meta)
-export class DynamicComponent {}
-`
-    const dynRes = findComponentChangeDetectionIssues(nonObject, 'dyn.ts')
-    assert.equal(dynRes.issues.length, 1)
-    assert.match(dynRes.issues[0], /^dyn\.ts:4: @Component decorator must pass an object literal/)
-
-    const unterminated = `
-import { Component } from '@angular/core'
-@Component({ selector: 'broken'
-`
-    const untermRes = findComponentChangeDetectionIssues(unterminated, 'broken.ts')
-    assert.equal(untermRes.issues.length, 1)
-    assert.match(untermRes.issues[0], /^broken\.ts:3: unterminated @Component/)
-})
-
-test('ignores non-Angular Component decorators imported from other modules', () => {
-    const namedOther = `
-import { Component } from 'other-framework'
-@Component({ selector: 'x' })
-export class OtherNamed {}
-`
-    assert.deepEqual(findComponentChangeDetectionIssues(namedOther, 'other.ts'), { checked: 0, issues: [] })
-
-    const defaultOther = `
-import Component from 'other-framework'
-@Component({ selector: 'x' })
-export class OtherDefault {}
-`
-    assert.deepEqual(findComponentChangeDetectionIssues(defaultOther, 'other-default.ts'), { checked: 0, issues: [] })
-})
-
-test('fails closed when source directory is missing or contains zero @Component decorators', () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paddy-rdp-cd-'))
+test('fails closed when rdp-plugin/src is missing or contains zero @Component decorators', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paddy-rdp-cd-empty-'))
     try {
         assert.throws(
             () => checkComponentChangeDetection(tmp),
@@ -273,10 +460,10 @@ test('fails closed when source directory is missing or contains zero @Component 
         const srcDir = path.join(tmp, 'rdp-plugin', 'src')
         fs.mkdirSync(srcDir, { recursive: true })
         fs.writeFileSync(path.join(srcDir, 'empty.ts'), 'export const value = 1\n')
+        fs.writeFileSync(path.join(srcDir, 'ignored.d.ts'), '@Component({})\nexport declare class X {}\n')
         const emptyResult = checkComponentChangeDetection(tmp)
         assert.equal(emptyResult.checked, 0)
-        assert.equal(emptyResult.issues.length, 1)
-        assert.match(emptyResult.issues[0], /No @Component decorators found/)
+        assert.deepEqual(emptyResult.issues, ['No @Component decorators found under rdp-plugin/src'])
     } finally {
         fs.rmSync(tmp, { recursive: true, force: true })
     }
